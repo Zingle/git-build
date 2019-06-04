@@ -1,0 +1,51 @@
+#!/bin/bash -e
+
+showhelp () {
+    echo "Usage: git build [--tag=<tag>] [--base=<branch>] <branch> [<branch> ...]"
+}
+
+declare tag=qa
+declare base=master
+declare branch
+declare -a branches
+
+while test $# -gt 0; do
+    case "$1" in
+        --help)     showhelp;       exit;;
+        --tag)      tag=$2;         shift 2;;
+        --base)     base=$2;        shift 2;;
+        --tag=*)    tag=${1#*=};    shift;;
+        --base=*)   base=${1#*=};   shift;;
+        --)                         shift; break;;
+        *)                          break;;
+    esac
+done
+
+if ! test "$tag"; then
+    echo "Tag cannot be empty" >&2
+    exit 3
+elif ! test "$base"; then
+    echo "Branch cannot be empty" >&2
+    exit 4
+elif ! git rev-parse HEAD &>/dev/null; then
+    echo "Cannot find HEAD" >&2
+    exit 10
+elif test $(git status --porcelain 2>/dev/null | wc -l) -gt 0; then
+    echo "Working tree is not clean" >&2
+    exit 11
+fi
+
+git fetch
+git checkout --detach "origin/$base"
+
+IFS=$'\n' branches=($(sort <<< "$*"))
+unset IFS
+
+for branch in ${branches[@]}; do
+    git merge "origin/$branch"
+done
+
+git tag -fa -m "creating $tag build from $base+[${branches[@]}]" $tag
+git push -f origin $tag
+
+echo pushed $tag build tag
