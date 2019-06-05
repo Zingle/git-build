@@ -42,7 +42,7 @@ IFS=$'\n' branches=($(sort <<< "$*"))
 unset IFS
 
 for branch in ${branches[@]}; do
-    git merge "origin/$branch"
+    git merge --no-ff -m "codeploy merging $branch" "origin/$branch"
 done
 
 git tag -fa -m "creating $tag build from $base+[${branches[@]}]" $tag

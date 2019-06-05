@@ -1,6 +1,6 @@
 {
   "name": "@zingle/git-build",
-  "version": "0.0.1-alpha1",
+  "version": "0.0.1-alpha2",
   "description": "git command to create and push Zingle build tags",
   "bin": {
     "git-build": "git-build"
