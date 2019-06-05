@@ -6,6 +6,7 @@ showhelp () {
 
 declare tag=qa
 declare base=master
+declare restore
 declare branch
 declare -a branches
 
@@ -35,17 +36,29 @@ elif test $(git status --porcelain 2>/dev/null | wc -l) -gt 0; then
     exit 11
 fi
 
-git fetch
-git checkout --detach "origin/$base"
+restore=$(git rev-parse --abbrev-ref HEAD)
+
+echo fetching latest from origin
+git fetch >/dev/null
+
+echo detaching from origin/$base
+git checkout --detach "origin/$base" 2>/dev/null
 
 IFS=$'\n' branches=($(sort <<< "$*"))
 unset IFS
 
 for branch in ${branches[@]}; do
-    git merge --no-ff -m "codeploy merging $branch" "origin/$branch"
+    echo merging $branch
+    git merge --no-ff -m"codeploy merging $branch" "origin/$branch" >/dev/null
 done
 
-git tag -fa -m "creating $tag build from $base+[${branches[@]}]" $tag
-git push -f origin $tag
+echo creating $tag tag
+git tag -fa -m"creating $tag build from $base+[${branches[@]}]" $tag >/dev/null
+
+echo pushing $tag tag to origin
+git push -qf origin $tag >/dev/null
+
+echo restoring $restore branch
+git checkout -q $restore >/dev/null
 
 echo pushed $tag build tag
