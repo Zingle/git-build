@@ -1,7 +1,19 @@
 #!/bin/bash -e
 
 showhelp () {
-    echo "Usage: git build [--tag=<tag>] [--base=<branch>] [<branch> ...]"
+    echo "Usage:"
+    echo "  git build [--tag=<tag>] [--base=<branch>] [<branch> ...]"
+    echo "  git build --version"
+    echo "  git build --help"
+}
+
+showver () {
+    local script="$0"
+    local dir=$(dirname "$script")
+    local pkg="$dir/package.json"
+    local verline=$(grep '"version"' < $pkg | head -n1)
+    local ver=$(sed -e 's/.*": "//' -e 's/".*//' <<< "$verline")
+    echo $ver
 }
 
 declare tag=qa
@@ -18,6 +30,7 @@ while test $# -gt 0; do
         --base)     base=$2;        shift 2;;
         --tag=*)    tag=${1#*=};    shift;;
         --base=*)   base=${1#*=};   shift;;
+        --version)  showver;        exit;;
         --)                         shift; break;;
         *)                          break;;
     esac
