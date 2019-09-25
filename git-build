@@ -1,13 +1,14 @@
 #!/bin/bash -e
 
 showhelp () {
-    echo "Usage: git build [--tag=<tag>] [--base=<branch>] <branch> [<branch> ...]"
+    echo "Usage: git build [--tag=<tag>] [--base=<branch>] [<branch> ...]"
 }
 
 declare tag=qa
 declare base=master
 declare restore
 declare branch
+declare spec
 declare -a branches
 
 while test $# -gt 0; do
@@ -53,7 +54,8 @@ for branch in ${branches[@]}; do
 done
 
 echo creating $tag tag
-git tag -fa -m"creating $tag build from $base+[${branches[@]}]" $tag >/dev/null
+spec="$base+[${branches[@]}]"
+git tag -fa -m"creating $tag build from $spec" $tag >/dev/null
 
 echo pushing $tag tag to origin
 git push -qf origin $tag >/dev/null
