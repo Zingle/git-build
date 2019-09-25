@@ -63,7 +63,9 @@ unset IFS
 
 for branch in ${branches[@]}; do
     echo merging $branch
-    git merge --no-ff -m"codeploy merging $branch" "origin/$branch" >/dev/null
+    if ! git merge --no-ff -m"codeploy merging $branch" "origin/$branch" >/dev/null; then
+        echo "could not merge $branch (maybe not a branch?)"
+    fi
 done
 
 echo creating $tag tag
