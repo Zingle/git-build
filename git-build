@@ -1,11 +1,11 @@
 #!/bin/bash -e
 
 showhelp () {
-    echo "Usage: git build [--tag=<tag>] [--base=<branch>] <branch> [<branch> ...]"
+    echo "Usage: git build [--tag=<tag>] <branch> [<branch> ...]"
 }
 
 declare tag=qa
-declare base=master
+declare base=
 declare restore
 declare branch
 declare -a branches
@@ -13,10 +13,9 @@ declare -a branches
 while test $# -gt 0; do
     case "$1" in
         --help)     showhelp;       exit;;
-        --tag)      tag=$2;         shift 2;;
-        --base)     base=$2;        shift 2;;
+        -T|--tag)   tag=$2;         shift 2;;
         --tag=*)    tag=${1#*=};    shift;;
-        --base=*)   base=${1#*=};   shift;;
+        -T?*)       tag=${1:2};     shift;;
         --)                         shift; break;;
         *)                          break;;
     esac
@@ -25,16 +24,18 @@ done
 if ! test "$tag"; then
     echo "Tag cannot be empty" >&2
     exit 3
-elif ! test "$base"; then
-    echo "Branch cannot be empty" >&2
-    exit 4
 elif ! git rev-parse HEAD &>/dev/null; then
     echo "Cannot find HEAD" >&2
     exit 10
 elif test $(git status --porcelain 2>/dev/null | wc -l) -gt 0; then
     echo "Working tree is not clean" >&2
     exit 11
+elif test $# -eq 0; then
+    echo "Must specify at least one branch" >&2
+    exit 4
 fi
+
+base="$1"; shift
 
 restore=$(git rev-parse --abbrev-ref HEAD)
 
@@ -42,18 +43,21 @@ echo fetching latest from origin
 git fetch >/dev/null
 
 echo detaching from origin/$base
-git checkout --detach "origin/$base" 2>/dev/null
+git checkout --detach "origin/$base" 2>/dev/null || {
+    echo could not detach \(is $base a valid branch\?\) >&2
+    exit 12
+}
 
 IFS=$'\n' branches=($(sort <<< "$*"))
 unset IFS
 
 for branch in ${branches[@]}; do
     echo merging $branch
-    git merge --no-ff -m"codeploy merging $branch" "origin/$branch" >/dev/null
+    git merge --no-ff -m"merging $branch" "origin/$branch" >/dev/null
 done
 
 echo creating $tag tag
-git tag -fa -m"creating $tag build from $base+[${branches[@]}]" $tag >/dev/null
+git tag -fa -m"tagging $tag build from $base+[${branches[@]}]" $tag >/dev/null
 
 echo pushing $tag tag to origin
 git push -qf origin $tag >/dev/null
