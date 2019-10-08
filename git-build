@@ -4,10 +4,21 @@ showhelp () {
     echo "Usage: git build [--tag=<tag>] <branch> [<branch> ...]"
 }
 
+cleanup () {
+    if test "$clean"; then
+        echo build successful
+    else
+        echo build failed >&2
+        echo restoring $restore
+        git checkout -q $restore >/dev/null
+    fi
+}
+
 declare tag=qa
 declare base=
 declare restore
 declare branch
+declare clean=
 declare -a branches
 
 while test $# -gt 0; do
@@ -36,8 +47,9 @@ elif test $# -eq 0; then
 fi
 
 base="$1"; shift
-
 restore=$(git rev-parse --abbrev-ref HEAD)
+
+trap cleanup EXIT
 
 echo fetching latest from origin
 git fetch >/dev/null
@@ -66,3 +78,5 @@ echo restoring $restore branch
 git checkout -q $restore >/dev/null
 
 echo pushed $tag build tag
+
+clean=1
