@@ -8,9 +8,9 @@ cleanup () {
     if test "$clean"; then
         echo build successful
     else
-        echo build failed >&2
         echo restoring $restore
-        git checkout -q $restore >/dev/null
+        git checkout -q $restore >/dev/null || true
+        echo build failed >&2
     fi
 }
 
