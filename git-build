@@ -1,36 +1,32 @@
 #!/bin/bash -e
 
 showhelp () {
-    echo "Usage:"
-    echo "  git build [--tag=<tag>] [--base=<branch>] [<branch> ...]"
-    echo "  git build --version"
-    echo "  git build --help"
+    echo "Usage: git build [--tag=<tag>] <branch> [<branch> ...]"
 }
 
-showver () {
-    local script="$0"
-    local dir=$(dirname "$script")
-    local pkg="$dir/package.json"
-    local verline=$(grep '"version"' < $pkg | head -n1)
-    local ver=$(sed -e 's/.*": "//' -e 's/".*//' <<< "$verline")
-    echo $ver
+cleanup () {
+    if test "$clean"; then
+        echo build successful
+    else
+        echo restoring $restore
+        git checkout -q $restore >/dev/null || true
+        echo build failed >&2
+    fi
 }
 
 declare tag=qa
-declare base=master
+declare base=
 declare restore
 declare branch
-declare spec
+declare clean=
 declare -a branches
 
 while test $# -gt 0; do
     case "$1" in
         --help)     showhelp;       exit;;
-        --tag)      tag=$2;         shift 2;;
-        --base)     base=$2;        shift 2;;
+        -T|--tag)   tag=$2;         shift 2;;
         --tag=*)    tag=${1#*=};    shift;;
-        --base=*)   base=${1#*=};   shift;;
-        --version)  showver;        exit;;
+        -T?*)       tag=${1:2};     shift;;
         --)                         shift; break;;
         *)                          break;;
     esac
@@ -39,38 +35,41 @@ done
 if ! test "$tag"; then
     echo "Tag cannot be empty" >&2
     exit 3
-elif ! test "$base"; then
-    echo "Branch cannot be empty" >&2
-    exit 4
 elif ! git rev-parse HEAD &>/dev/null; then
     echo "Cannot find HEAD" >&2
     exit 10
 elif test $(git status --porcelain 2>/dev/null | wc -l) -gt 0; then
     echo "Working tree is not clean" >&2
     exit 11
+elif test $# -eq 0; then
+    echo "Must specify at least one branch" >&2
+    exit 4
 fi
 
+base="$1"; shift
 restore=$(git rev-parse --abbrev-ref HEAD)
+
+trap cleanup EXIT
 
 echo fetching latest from origin
 git fetch >/dev/null
 
 echo detaching from origin/$base
-git checkout --detach "origin/$base" 2>/dev/null
+git checkout --detach "origin/$base" 2>/dev/null || {
+    echo could not detach \(is $base a valid branch\?\) >&2
+    exit 12
+}
 
 IFS=$'\n' branches=($(sort <<< "$*"))
 unset IFS
 
 for branch in ${branches[@]}; do
     echo merging $branch
-    if ! git merge --no-ff -m"codeploy merging $branch" "origin/$branch" >/dev/null; then
-        echo "could not merge $branch (maybe not a branch?)"
-    fi
+    git merge --no-ff -m"merging $branch" "origin/$branch" >/dev/null
 done
 
 echo creating $tag tag
-spec="$base+[${branches[@]}]"
-git tag -fa -m"creating $tag build from $spec" $tag >/dev/null
+git tag -fa -m"tagging $tag build from $base+[${branches[@]}]" $tag >/dev/null
 
 echo pushing $tag tag to origin
 git push -qf origin $tag >/dev/null
@@ -79,3 +78,5 @@ echo restoring $restore branch
 git checkout -q $restore >/dev/null
 
 echo pushed $tag build tag
+
+clean=1
