@@ -65,7 +65,13 @@ unset IFS
 
 for branch in ${branches[@]}; do
     echo merging $branch
-    git merge --no-ff -m"merging $branch" "origin/$branch" >/dev/null
+    if ! git merge --no-ff -m"merging $branch" "origin/$branch" >/dev/null; then
+        echo merge failed
+        git merge --abort
+        git merge --no-ff -m"merging $branch" "origin/$branch" || true
+        git merge --abort
+        exit 13
+    fi
 done
 
 echo creating $tag tag
