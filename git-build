@@ -16,8 +16,7 @@ cleanup () {
 
 declare tag=qa
 declare base=
-declare restore
-declare branch
+declare restore branch msg
 declare clean=
 declare -a branches
 
@@ -75,7 +74,8 @@ for branch in ${branches[@]}; do
 done
 
 echo creating $tag tag
-git tag -fa -m"tagging $tag build from $base+[${branches[@]}]" $tag >/dev/null
+msg="tagging $tag build from: $base ${branches[@]}"
+git tag -fa -m"$msg" $tag >/dev/null
 
 echo pushing $tag tag to origin
 git push -qf origin $tag >/dev/null
